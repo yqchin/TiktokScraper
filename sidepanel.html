@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikScrape</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">TikTok scraper</p>
+        <h1>TikScrape</h1>
+      </div>
+      <span class="count" id="countBadge">0 videos</span>
+    </header>
+
+    <section class="control-panel" aria-label="Scrape controls">
+      <div class="field">
+        <label for="scrapeLimit">Video limit</label>
+        <input id="scrapeLimit" type="number" min="1" step="1" value="100" />
+      </div>
+
+      <button class="btn primary" id="scrapeBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"/>
+        </svg>
+        Scrape current tab
+      </button>
+
+      <div class="field hashtag-field">
+        <label for="hashtagInput">Hashtags</label>
+        <input id="hashtagInput" type="text" placeholder="hashtag1,hashtag2" />
+      </div>
+
+      <button class="btn secondary" id="hashtagBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 9h14M4 15h14M10 4 8 20M16 4l-2 16"/>
+        </svg>
+        Scrape hashtags
+      </button>
+    </section>
+
+    <div class="status" id="statusBar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Open TikTok, then scrape the current tab.</span>
+    </div>
+
+    <section class="toolbar" aria-label="Export actions">
+      <button class="btn secondary" id="exportCSV" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+        </svg>
+        CSV
+      </button>
+      <button class="btn secondary" id="exportJSON" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+        </svg>
+        JSON
+      </button>
+      <button class="btn secondary danger" id="clearBtn" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>
+        </svg>
+        Clear
+      </button>
+    </section>
+
+    <section class="results" id="resultsContainer" aria-label="Scraped videos">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5v14l11-7-11-7Z"/>
+          </svg>
+        </div>
+        <h2>No videos yet</h2>
+        <p>Scraped videos will appear here as compact, export-ready records.</p>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </section>
+  </main>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
