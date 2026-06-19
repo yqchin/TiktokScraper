@@ -16,7 +16,12 @@
       <span class="count" id="countBadge">0 videos</span>
     </header>
 
-    <section class="control-panel" aria-label="Scrape controls">
+    <nav class="tabs" aria-label="Data views">
+      <button class="tab-btn active" id="videosTab" data-view="videos">Videos</button>
+      <button class="tab-btn" id="accountsTab" data-view="accounts">Accounts</button>
+    </nav>
+
+    <section class="control-panel view-panel active" id="videosPanel" aria-label="Video scrape controls">
       <div class="field">
         <label for="scrapeLimit">Video limit</label>
         <input id="scrapeLimit" type="number" min="1" step="1" value="100" />
@@ -39,6 +44,42 @@
           <path d="M5 9h14M4 15h14M10 4 8 20M16 4l-2 16"/>
         </svg>
         Scrape hashtags
+      </button>
+    </section>
+
+    <section class="control-panel view-panel account-panel" id="accountsPanel" aria-label="Account scrape controls">
+      <div class="field">
+        <label for="profileVideoLimit">Videos per account</label>
+        <input id="profileVideoLimit" type="number" min="1" step="1" value="50" />
+      </div>
+
+      <div class="field">
+        <label for="accountSourceLimit">Videos per hashtag</label>
+        <input id="accountSourceLimit" type="number" min="1" step="1" value="100" />
+      </div>
+
+      <div class="field hashtag-field">
+        <label for="accountHashtagInput">Hashtags</label>
+        <input id="accountHashtagInput" type="text" placeholder="hashtag1,hashtag2" />
+      </div>
+
+      <div class="field account-list-field">
+        <label for="accountListInput">Accounts</label>
+        <textarea id="accountListInput" rows="4" placeholder="@account1, @account2 or profile URLs"></textarea>
+      </div>
+
+      <button class="btn primary" id="scanAccountsBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Scan creators
+      </button>
+
+      <button class="btn secondary" id="fetchBiosBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/>
+        </svg>
+        Fetch bios
       </button>
     </section>
 
@@ -68,8 +109,8 @@
       </button>
     </section>
 
-    <section class="results" id="resultsContainer" aria-label="Scraped videos">
-      <div class="empty-state" id="emptyState">
+    <section class="results view-panel active" id="videosResults" aria-label="Scraped videos">
+      <div class="empty-state" id="videoEmptyState">
         <div class="empty-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7-11-7Z"/>
@@ -79,6 +120,19 @@
         <p>Scraped videos will appear here as compact, export-ready records.</p>
       </div>
       <div class="results-list" id="resultsList"></div>
+    </section>
+
+    <section class="results view-panel" id="accountsResults" aria-label="Scraped accounts">
+      <div class="empty-state" id="accountEmptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
+          </svg>
+        </div>
+        <h2>No accounts yet</h2>
+        <p>Scan creators from the video list to build one profile row per account.</p>
+      </div>
+      <div class="results-list" id="accountsList"></div>
     </section>
   </main>
 

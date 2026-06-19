@@ -1,9 +1,27 @@
 // content.js - Injected into TikTok pages to extract video data
 
+var IGNORED_CREATOR_USERNAMES = new Set(['3043842031a']);
+
+function normalizeUsername(username) {
+  return (username || '').replace(/^@/, '').trim().toLowerCase();
+}
+
+function isIgnoredCreator(username) {
+  return IGNORED_CREATOR_USERNAMES.has(normalizeUsername(username));
+}
+
 function extractHashtags(text) {
   if (!text) return [];
   const matches = text.match(/#[\w\u0080-\uFFFF]+/g);
   return matches ? [...new Set(matches)] : [];
+}
+
+function removeHashtagsFromTitle(text) {
+  return (text || '')
+    .replace(/#[\w\u0080-\uFFFF]+/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.!?;:])/g, '$1')
+    .trim();
 }
 
 function cleanURL(url) {
@@ -130,14 +148,20 @@ function getHashtagsFromPage() {
 function cleanFallbackTitle(title) {
   const cleaned = (title || '')
     .replace(/\s+/g, ' ')
+    .replace(/^[.\u2026\s|:-]+/, '')
     .replace(/^Watch .*?'s video\s*/i, '')
+    .replace(/^Watch @?[\w.-]+'?s video\s*/i, '')
+    .replace(/^@?[\w.-]+'?s video\s*[:|-]?\s*/i, '')
     .replace(/^original sound\s*-\s*/i, '')
+    .replace(/\s*\|\s*TikTok\s*$/i, '')
+    .replace(/\s*-\s*TikTok\s*$/i, '')
     .trim();
 
   if (
     !cleaned ||
     /^TikTok$/i.test(cleaned) ||
     /^Photo by /i.test(cleaned) ||
+    /['\u2019]s profile$/i.test(cleaned) ||
     /^(like|comment|share|follow|views?|play|pause)$/i.test(cleaned) ||
     /^\d+(\.\d+)?[KMB]?$/.test(cleaned)
   ) {
@@ -462,7 +486,9 @@ function scrapeCurrentVideo() {
     result.creatorProfileURL = `https://www.tiktok.com/@${structured.creatorUsername}`;
   }
 
-  return result;
+  result.title = removeHashtagsFromTitle(result.title);
+
+  return isIgnoredCreator(result.creatorUsername) ? null : result;
 }
 
 var FEED_MAX_SCROLLS = 160;
@@ -538,6 +564,10 @@ function collectVisibleFeedVideos(videoMap, limit) {
       data.creatorProfileURL = `https://www.tiktok.com/@${data.creatorUsername}`;
     }
 
+    if (isIgnoredCreator(data.creatorUsername)) {
+      continue;
+    }
+
     videoMap.set(videoId, data);
   }
 }
@@ -578,8 +608,91 @@ async function scrapeFeedVideos(limit = 100) {
   const videos = Array.from(videoMap.values()).slice(0, limit);
   return videos.map(({ sourceURL, ...video }) => ({
     ...video,
+    title: removeHashtagsFromTitle(video.title),
     hashtags: video.hashtags?.length ? video.hashtags : extractHashtags(video.title)
   }));
+}
+
+function cleanBioText(text) {
+  return (text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getProfileBio() {
+  const selectors = [
+    '[data-e2e="user-bio"]',
+    '[data-e2e="profile-bio"]',
+    'h2[data-e2e="user-bio"]',
+    'div[data-e2e="user-bio"]',
+    '[class*="ShareUserInfo"] h2',
+    '[class*="UserInfo"] h2',
+    '[class*="bio"]'
+  ];
+
+  for (const selector of selectors) {
+    const el = document.querySelector(selector);
+    const text = cleanBioText(el?.innerText || el?.textContent || '');
+    if (text && text.length > 1) {
+      return text;
+    }
+  }
+
+  const description = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+  const match = description.match(/(?:videos created by|from)\s+[^.]+\.?\s*(.+)$/i);
+  return cleanBioText(match?.[1] || '');
+}
+
+function getProfileUsername() {
+  const fromURL = extractCreatorFromURL(window.location.href);
+  if (fromURL) return fromURL;
+
+  const selectors = [
+    '[data-e2e="user-title"]',
+    '[data-e2e="user-subtitle"]',
+    'h1',
+    'h2'
+  ];
+
+  for (const selector of selectors) {
+    const el = document.querySelector(selector);
+    const text = (el?.innerText || el?.textContent || '').trim().replace(/^@/, '');
+    if (/^[\w.-]{2,24}$/.test(text)) {
+      return text;
+    }
+  }
+
+  return '';
+}
+
+async function scrapeCurrentProfile(limit = 50) {
+  const pageText = (document.body?.innerText || '').replace(/\s+/g, ' ').trim();
+  if (/something went wrong/i.test(pageText)) {
+    throw new Error('TikTok showed "Something went wrong".');
+  }
+
+  const username = getProfileUsername();
+  const videos = await scrapeFeedVideos(limit);
+  const hashtags = new Set();
+  const titles = [];
+
+  videos.forEach(video => {
+    if (video.title) {
+      titles.push(video.title);
+    }
+    (video.hashtags || []).forEach(tag => hashtags.add(tag));
+  });
+
+  return {
+    creatorUsername: username,
+    creatorProfileURL: username ? `https://www.tiktok.com/@${username}` : cleanURL(window.location.href),
+    bio: getProfileBio(),
+    videoCount: videos.length,
+    titles,
+    hashtags: Array.from(hashtags),
+    videos,
+    scrapedAt: new Date().toISOString()
+  };
 }
 
 // Listen for messages from popup
@@ -587,49 +700,66 @@ if (!window.__tiktokScraperContentListenerInstalled) {
   window.__tiktokScraperContentListenerInstalled = true;
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'scrape') {
-      (async () => {
-        try {
-          const url = window.location.href;
-          let result;
+    if (request.action !== 'scrape' && request.action !== 'scrapeProfile') {
+      return false;
+    }
 
-          // Better detection for video pages
-          const isVideoPage = url.includes('/video/') || 
-                              url.match(/\/@[\w._-]+\/video\/\d+/) ||
-                              url.includes('/v/');
+    (async () => {
+      try {
+        const url = window.location.href;
+        let result;
 
-          if (isVideoPage) {
-            // Single video page - scrape specific video
-            const videoData = scrapeCurrentVideo();
-            result = { type: 'single', data: [videoData] };
-          } else {
-            // Try to scrape feed first
-            const feedVideos = await scrapeFeedVideos(request.limit);
-            if (feedVideos.length > 0) {
-              result = { type: 'feed', data: feedVideos };
-            } else {
-              result = { type: 'feed', data: [] };
-            }
-          }
-
-          sendResponse({ 
-            success: true, 
-            result,
+        if (request.action === 'scrapeProfile') {
+          const profileData = await scrapeCurrentProfile(request.limit);
+          sendResponse({
+            success: true,
+            result: { type: 'profile', data: profileData },
             debug: {
               url,
-              itemsFound: result.data.length,
-              pageType: result.type
+              itemsFound: profileData.videoCount,
+              pageType: 'profile'
             }
           });
-        } catch (err) {
-          sendResponse({ 
-            success: false, 
-            error: err.message,
-            stack: err.stack
-          });
+          return;
         }
-      })();
-    }
+
+        // Better detection for video pages
+        const isVideoPage = url.includes('/video/') ||
+                            url.match(/\/@[\w._-]+\/video\/\d+/) ||
+                            url.includes('/v/');
+
+        if (isVideoPage) {
+          // Single video page - scrape specific video
+          const videoData = scrapeCurrentVideo();
+          result = { type: 'single', data: videoData ? [videoData] : [] };
+        } else {
+          // Try to scrape feed first
+          const feedVideos = await scrapeFeedVideos(request.limit);
+          if (feedVideos.length > 0) {
+            result = { type: 'feed', data: feedVideos };
+          } else {
+            result = { type: 'feed', data: [] };
+          }
+        }
+
+        sendResponse({
+          success: true,
+          result,
+          debug: {
+            url,
+            itemsFound: result.data.length,
+            pageType: result.type
+          }
+        });
+      } catch (err) {
+        sendResponse({
+          success: false,
+          error: err.message,
+          stack: err.stack
+        });
+      }
+    })();
+
     return true; // keep channel open for async
   });
 }

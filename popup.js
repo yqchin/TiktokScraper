@@ -1,6 +1,7 @@
 // popup.js
 
 let scrapedData = [];
+const IGNORED_CREATOR_USERNAMES = new Set(['3043842031a']);
 
 const scrapeBtn     = document.getElementById('scrapeBtn');
 const exportCSV     = document.getElementById('exportCSV');
@@ -12,6 +13,14 @@ const countBadge    = document.getElementById('countBadge');
 const statusDot     = document.getElementById('statusDot');
 const statusText    = document.getElementById('statusText');
 const scrapeLimit   = document.getElementById('scrapeLimit');
+
+function normalizeUsername(username) {
+  return (username || '').replace(/^@/, '').trim().toLowerCase();
+}
+
+function isIgnoredCreator(username) {
+  return IGNORED_CREATOR_USERNAMES.has(normalizeUsername(username));
+}
 
 // ── Status helpers ──────────────────────────────────────────────────────────
 function setStatus(state, msg) {
@@ -156,7 +165,7 @@ scrapeBtn.addEventListener('click', async () => {
 
     if (response && response.success) {
       const newItems = response.result.data.filter(item =>
-        item.videoURL || item.creatorUsername || item.title
+        !isIgnoredCreator(item.creatorUsername) && (item.videoURL || item.creatorUsername || item.title)
       );
 
       if (newItems.length === 0) {
@@ -262,8 +271,11 @@ function downloadFile(filename, content, type) {
 // ── Init: load persisted data ────────────────────────────────────────────────
 chrome.storage.local.get('scrapedData', ({ scrapedData: saved }) => {
   if (saved && saved.length > 0) {
-    scrapedData = saved;
-    setStatus('active', `Loaded ${saved.length} previously scraped item${saved.length !== 1 ? 's' : ''}`);
+    scrapedData = saved.filter(item => !isIgnoredCreator(item.creatorUsername));
+    if (scrapedData.length !== saved.length) {
+      chrome.storage.local.set({ scrapedData });
+    }
+    setStatus('active', `Loaded ${scrapedData.length} previously scraped item${scrapedData.length !== 1 ? 's' : ''}`);
     renderResults();
   } else {
     setStatus('', 'Navigate to a TikTok page and click Scrape');

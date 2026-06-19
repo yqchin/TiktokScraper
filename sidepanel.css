@@ -36,7 +36,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -86,19 +87,61 @@ h1 {
   text-align: center;
 }
 
-.control-panel {
+.tabs {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px 18px 0;
+  background: var(--panel);
+}
+
+.tab-btn {
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.tab-btn.active {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: #edf8f6;
+  color: var(--accent);
+}
+
+.view-panel {
+  display: none;
+}
+
+.view-panel.active {
+  display: grid;
+}
+
+.control-panel {
   grid-template-columns: minmax(98px, 118px) 1fr;
   gap: 10px;
   padding: 16px 18px 12px;
   background: var(--panel);
 }
 
+.account-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .hashtag-field {
   grid-column: 1 / -1;
 }
 
-#hashtagBtn {
+.account-list-field {
+  grid-column: 1 / -1;
+}
+
+#hashtagBtn,
+#scanAccountsBtn,
+#fetchBiosBtn {
   grid-column: 1 / -1;
 }
 
@@ -113,18 +156,30 @@ h1 {
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field textarea {
   width: 100%;
-  height: 38px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--panel-soft);
   color: var(--text);
-  padding: 0 10px;
   outline: none;
 }
 
-.field input:focus {
+.field input {
+  height: 38px;
+  padding: 0 10px;
+}
+
+.field textarea {
+  min-height: 86px;
+  padding: 10px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
@@ -250,6 +305,10 @@ h1 {
   padding: 14px 18px 20px;
 }
 
+.results.active {
+  display: block;
+}
+
 .results::-webkit-scrollbar {
   width: 8px;
 }
@@ -313,6 +372,14 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.account-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -369,6 +436,43 @@ h1 {
   color: var(--muted);
   font-weight: 600;
   font-style: italic;
+}
+
+.card-bio {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.summary-block {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.summary-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.title-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.title-list li {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .meta {
